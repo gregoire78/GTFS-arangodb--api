@@ -17,9 +17,28 @@ router.get('/', async (ctx) => {
     const cursor = await db.query(aql`
     for loc in stops
         let distance = DISTANCE(loc.lat, loc.lon, ${Number(ctx.query.lat)}, ${Number(ctx.query.lng)})
-        sort distance
         filter loc.locationType == 0 && distance <= 1000
-        return keep(loc, "lon", "lat", "zoneId", "name", "_key")
+        sort distance
+        let routes = (
+            for v, e, p in 2 outbound loc._id has_routes, inbound operates
+                let route = p.vertices[1]
+                let agency = p.vertices[2]
+                return {
+                    shortName: route.shortName,
+                    type: route.type,
+                    color: route.color,
+                    textColor: route.textColor,
+                    agency: agency.name
+                }
+        )
+        return {
+            _key: loc._key,
+            lon: loc.lon,
+            lat: loc.lat,
+            zoneId: loc.zoneId,
+            name: loc.name,
+            routes
+        }
     `)
     const res = []
     for await (const item of cursor) {
@@ -59,11 +78,11 @@ router.get('/:tripId/stopTimes', async (ctx) => {
         let stop = document('stops', st.stopId)
         return merge(st, {stopName: stop.name})
     `)
-    const res = []
-    for await (const item of cursor) {
-        res.push(item)
-    }
-    ctx.body = res
+    // const res = []
+    // for await (const item of cursor) {
+    //     res.push(item)
+    // }
+    ctx.body = await cursor.all()
 })
 
 app.on('error', console.error)
