@@ -53,16 +53,30 @@ router.get('/:stopId/trips', async (ctx) => {
     const cursor = await db.query(aql`
     let date = ${now.toISODate()}
     let day = ${dayOfWeek[now.weekday-1]}
-    for trip,e,b IN 2 inbound ${"stops/"+ctx.params.stopId} located_at, any part_of_trip
-            let exec = (for o in calendar_dates filter trip.serviceId == o.serviceId return o)
-            let route = document("routes", trip.routeId)
-            let agency = document("agency", route.agencyId)
-            for cal in calendar
-                filter cal.serviceId == trip.serviceId and date_diff(cal.startDate, date, "days", false) >= 0 and
-                date_diff(cal.endDate, date, "days", false) <= 0 and
-                cal[day] == true and
-                date != exec.date
-                return unset(merge(trip, route, {service: agency.name}, {id: trip._key}), "_id", "_key", "_rev", "agencyId", "routeId", "serviceId", "shortName", "directionId")
+    for v, e, p in 3 inbound ${"stops/"+ctx.params.stopId} located_at, outbound part_of_trip, inbound serves
+        let trip = p.vertices[2]
+        let cal = v
+        let exec = (for o in calendar_dates filter trip.serviceId == o.serviceId return o)
+        filter cal.serviceId == trip.serviceId and
+            date_diff(cal.startDate, date, "days", false) >= 0 and
+            date_diff(cal.endDate, date, "days", false) <= 0 and
+            cal[day] == true and
+            date != exec.date
+        let op = first(for v1, e1, p1 in 2 outbound trip._id uses, inbound operates return p1)
+        let v1 = flatten(push(slice(p.vertices[*], 0, -2), op.vertices))
+        sort v1[1].departureTime
+        return {
+            id: trip._key,
+            wheelchairAccessible: trip.wheelchairAccessible,
+            departureTime: v1[1].departureTime,
+            arrivalTime: v1[1].arrivalTime,
+            headsign: v1[2].headsign,
+            color: v1[3].color,
+            longName: v1[3].longName,
+            textColor: v1[3].textColor,
+            type: v1[3].type,
+            service: v1[4].name,
+        }
     `)
     const res = []
     for await (const item of cursor) {
