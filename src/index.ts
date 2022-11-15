@@ -64,7 +64,7 @@ router.get('/:stopId/trips', async (ctx) => {
             date != exec.date
         let op = first(for v1, e1, p1 in 2 outbound trip._id uses, inbound operates return p1)
         let v1 = flatten(push(slice(p.vertices[*], 0, -2), op.vertices))
-        sort v1[1].departureTime
+        sort v1[3].longName, v1[2].headsign, v1[1].departureTime
         return {
             id: trip._key,
             wheelchairAccessible: trip.wheelchairAccessible,
