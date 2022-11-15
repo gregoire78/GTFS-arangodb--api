@@ -24,6 +24,7 @@ router.get('/', async (ctx) => {
                 let route = p.vertices[1]
                 let agency = p.vertices[2]
                 return {
+                    id: route._key,
                     shortName: route.shortName,
                     type: route.type,
                     color: route.color,
